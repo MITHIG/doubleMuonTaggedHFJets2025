@@ -22,7 +22,7 @@ bool isGenMuonSelected(SingleMuTreeMessenger *M, int i);
 bool isFakeJet(JetTreeMessenger *MJet, int ijet);
 bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int mu1, int mu2);
 //int isOnia(float mass);
-std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi);
+int mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi, float dr_cut);
 
 int main(int argc, char *argv[]) {
   string VersionString = "V8";
@@ -32,15 +32,18 @@ int main(int argc, char *argv[]) {
   vector<string> InputFileNames = CL.GetStringVector("Input");
   string OutputFileName = CL.Get("Output");
 
+
+  //FIXME: add settings for matching parameters
   bool IsData = CL.GetBool("IsData", false);
   bool IsPP = CL.GetBool("IsPP", false);
-  bool svtx = CL.GetBool("svtx", false);
+  bool UseSvtInfo = CL.GetBool("UseSvtInfo", false);
   double Fraction = CL.GetDouble("Fraction", 1.00);
   double MinJetPT = CL.GetDouble("MinJetPT", 30);
   bool useHybrid = CL.GetBool("useHybrid", false);
+  double MuTrackMatchDRCut = CL.GetDouble("MuTrackMatchDRCut", 0.005);
   string PFJetCollection = CL.Get("PFJetCollection", "akCs3PFJetAnalyzer/t");
-  string PFTreeName = IsPP ? "pfcandAnalyzer/pfTree" : "particleFlowAnalyser/pftree";
-  PFTreeName = CL.Get("PFTree", PFTreeName);
+  //string PFTreeName = IsPP ? "pfcandAnalyzer/pfTree" : "particleFlowAnalyser/pftree";
+  //PFTreeName = CL.Get("PFTree", PFTreeName);
 
   TFile OutputFile(OutputFileName.c_str(), "RECREATE");
   TTree Tree("Tree", Form("Tree for MuMu tagged jet analysis (%s)", VersionString.c_str()));
@@ -52,8 +55,10 @@ int main(int argc, char *argv[]) {
   MMuMuJet.SetBranch(&Tree);
   MGenMuMuJet.SetBranch(&GenTree);
 
-  std::vector<int> mt1 = {-1, -1};
-  std::vector<int> mt2 = {-1, -1};
+
+  //IDs to match muons to charged tracks in the jet constituents
+  int indexMuTrackC1 = -1;
+  int indexMuTrackC2 = -1;
 
   for (const auto& InputFileName : InputFileNames) {
 
@@ -266,7 +271,7 @@ int main(int argc, char *argv[]) {
         MMuMuJet.jtNsvtx = MJet.jtNsvtx[ijet];
         MMuMuJet.jtNtrk = MJet.jtNtrk[ijet];
 
-        if (svtx) {
+        if (UseSvtInfo) {
 
           // ADD SVTX INFORMATION
 
@@ -403,8 +408,6 @@ int main(int argc, char *argv[]) {
           //cout << " reco pair at entry " << iE << endl;
           isJetMuonTagged = true;
           
-          mt1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1);
-          mt2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2);
 
           muPt1 = MSingleMu.SingleMuPT->at(maxMu1Index);
           muPt2 = MSingleMu.SingleMuPT->at(maxMu2Index);
@@ -412,6 +415,8 @@ int main(int argc, char *argv[]) {
           muEta2 = MSingleMu.SingleMuEta->at(maxMu2Index);
           muPhi1 = MSingleMu.SingleMuPhi->at(maxMu1Index);
           muPhi2 = MSingleMu.SingleMuPhi->at(maxMu2Index);
+          indexMuTrackC1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1, MuTrackMatchDRCut);
+          indexMuTrackC2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2, MuTrackMatchDRCut);
           muCharge1 = MSingleMu.SingleMuCharge->at(maxMu1Index);
           muCharge2 = MSingleMu.SingleMuCharge->at(maxMu2Index);
           muDiDxy1 = MSingleMu.SingleMuDxy->at(maxMu1Index);
@@ -481,22 +486,19 @@ int main(int argc, char *argv[]) {
         MMuMuJet.muDphi= muDphi;
         MMuMuJet.muDR= muDR;
 
-        MMuMuJet.trkIdx_mu1 = mt1[0];
-        MMuMuJet.trkIdx_mu2 = mt2[0];
-        MMuMuJet.svtxIdx_mu1 = mt1[1];
-        MMuMuJet.svtxIdx_mu2 = mt2[1];
-
-        mt1.clear();
-        mt2.clear();
+        MMuMuJet.trkIdx_mu1 = indexMuTrackC1;
+        MMuMuJet.trkIdx_mu2 = indexMuTrackC2;
+        MMuMuJet.svtxIdx_mu1 = MJet.trkSvtxId[indexMuTrackC1];
+        MMuMuJet.svtxIdx_mu2 = MJet.trkSvtxId[indexMuTrackC2];
 
         // Gen muon info  
 
-	      bool GenIsJetMuonTagged = false;
+	bool GenIsJetMuonTagged = false;
         bool GenIsRecoMatched = false;
         int nGenMu = 0;
         float GenMuPt1 = -999;
         float GenMuPt2 = -999;
-	      float GenMuEta1 = -999; 
+	float GenMuEta1 = -999; 
         float GenMuEta2 = -999; 
         float GenMuPhi1 = -999;
         float GenMuPhi2 = -999; 
@@ -848,25 +850,20 @@ bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1,
 
 }*/
 
-std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi){
+int mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi, float dr_cut) {
 
-  float dr_cut = 0.0004; // SUBJECT TO TUNING
-  std::vector<int> idx = {-1, -1};
-  std::vector<int> bad = {-1, -1};
+  int idx = -1;
 
-  if (MJet == nullptr) {
-    return bad;
+  if (MJet == nullptr){
+    return -1;
   }
   if (MJet->Tree == nullptr) {
-    return bad;
+    return -1;
   }
 
-  int c = 0;
+  int nFound = 0;
   for (int i = 0; i < MJet->ntrk; i++) {
-    // if(MJet->trkJetId[i] != jetno){continue;}
-    //if (fabs(MJet->trkPt[i] - pt) > 5) {
-    //  continue;
-    //}
+    //FIXME: do we need this condition?
     if (fabs(MJet->trkPdgId[i]) != 13) {
       continue;
     }
@@ -874,15 +871,14 @@ std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, floa
     float dPhi = DeltaPhi(MJet->trkPhi[i], phi);
 
     float dR = sqrt(dEta * dEta + dPhi * dPhi);
-    if(dR > dr_cut){continue;}
+    if(dR > dr_cut) continue;
 
-    c += 1;
-    idx[0] = i;
-    idx[1] = MJet->trkSvtxId[i];
+    nFound += 1;
+    idx = i;
   }
 
-  if (c != 1) {
-    return bad;
+  if (nFound != 1) {
+    return -1;
   } else {
     return idx;
   }

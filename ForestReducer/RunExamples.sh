@@ -22,7 +22,7 @@ fi
     --Input inputTest/ReferenceMCFileAOD.root \
     --IsData false \
     --IsPP true \
-    --svtx true \
+    --UseSvtInfo true \
     --Output Output/outputSkimMCtest.root \
     --MinJetPT 30 \
     --Fraction 1.00 \
