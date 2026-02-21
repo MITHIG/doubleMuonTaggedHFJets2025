@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 
 
   //FIXME: add settings for matching parameters
-  bool isDebug = CL.GetBool("isDebug", false);
+  bool IsDebug = CL.GetBool("IsDebug", false);
   bool IsData = CL.GetBool("IsData", false);
   bool IsPP = CL.GetBool("IsPP", false);
   bool UseTrackVtxInfo = CL.GetBool("UseTrackVtxInfo", false);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   //PFTreeName = CL.Get("PFTree", PFTreeName);
 
 
-  if (isDebug){
+  if (IsDebug){
     cout << "================= Settings =================" << endl;
     cout << "Input files: " << endl;
     for (const auto& InputFileName : InputFileNames) {
@@ -77,9 +77,6 @@ int main(int argc, char *argv[]) {
   MGenMuMuJet.SetBranch(&GenTree);
 
 
-  //IDs to match muons to charged tracks in the jet constituents
-  int indexMuTrackC1 = -1;
-  int indexMuTrackC2 = -1;
 
   for (const auto& InputFileName : InputFileNames) {
 
@@ -134,9 +131,7 @@ int main(int argc, char *argv[]) {
       MMuMuJet.Event = MEvent.Event;
       MGenMuMuJet.Event = MEvent.Event;
       MMuMuJet.hiBin = MEvent.hiBin;
-      //MgenMuMuJet.hiBin likely not needed
       MGenMuMuJet.hiBin = MEvent.hiBin;
-      //MuMuJet.hiHF and MGenMuMuJet.hiHF likely not needed
       MMuMuJet.hiHF = MEvent.hiHF;
       MGenMuMuJet.hiHF = MEvent.hiHF;
       MMuMuJet.NPU = 0;
@@ -256,7 +251,9 @@ int main(int argc, char *argv[]) {
 
       // JET SELECTION
 
-      for (int ijet = 0; ijet < MJet.JetCount; ijet++) {
+      for (int ijet = 0; ijet < MJet.JetCount; ijet++) { 
+        //IDs to match muons to charged tracks in the jet constituents
+    
         if (MJet.JetPT[ijet] < MinJetPT)
           continue;
         float jetEta = MJet.JetEta[ijet];
@@ -346,6 +343,8 @@ int main(int argc, char *argv[]) {
           } // end of loop over tracks in the jet
         } // end if UseTrackVtxInfo
 
+        int indexMuTrackC1 = -1;
+        int indexMuTrackC2 = -1;
         bool isJetMuonTagged = false;
         int nMu = 0; //number of selected muons in the jet cone (no charge condition)
         float muPt1 = -999.;
@@ -505,8 +504,8 @@ int main(int argc, char *argv[]) {
 
         MMuMuJet.trkIdx_mu1 = indexMuTrackC1;
         MMuMuJet.trkIdx_mu2 = indexMuTrackC2;
-        MMuMuJet.svtxIdx_mu1 = MJet.trkSvtxId[indexMuTrackC1];
-        MMuMuJet.svtxIdx_mu2 = MJet.trkSvtxId[indexMuTrackC2];
+        MMuMuJet.svtxIdx_mu1 = (indexMuTrackC1 >= 0) ? MJet.trkSvtxId[indexMuTrackC1] : -1;
+        MMuMuJet.svtxIdx_mu2 = (indexMuTrackC2 >= 0) ? MJet.trkSvtxId[indexMuTrackC2] : -1;
 
         // Gen muon info 
 	bool GenIsJetMuonTagged = false;
