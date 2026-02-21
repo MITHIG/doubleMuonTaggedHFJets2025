@@ -15,7 +15,6 @@ int compareReference(const char *testFileName, const char *refFileName,
   if (!fileTest || fileTest->IsZombie()) {
     std::cerr << "Error: Unable to open test file " << testFileName << std::endl;
     if (fileTest) { fileTest->Close(); delete fileTest; }
-    if (fileTest) fileTest->Close();
     return 1;
   }
   if (!fileRef || fileRef->IsZombie()) {
@@ -23,7 +22,6 @@ int compareReference(const char *testFileName, const char *refFileName,
     fileTest->Close();
     delete fileTest;
     if (fileRef) { fileRef->Close(); delete fileRef; }
-    if (fileRef) fileRef->Close();
     return 1;
   }
   TTree *treeTest = (TTree *)fileTest->Get(treeName);
@@ -116,7 +114,6 @@ int compareReference(const char *testFileName, const char *refFileName,
         << std::endl;
   }
 
-  delete c0;
   delete c1;
   delete ratioTestRef;
   delete hmumuMassTest;
@@ -126,8 +123,5 @@ int compareReference(const char *testFileName, const char *refFileName,
   delete fileTest;
   delete fileRef;
 
-  return 0;
-  fileTest->Close();
-  fileRef->Close();
   return comparisonPassed ? 0 : 1;
 }
