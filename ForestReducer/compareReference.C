@@ -6,6 +6,7 @@
 #include "TCanvas.h"
 #include "TTree.h"
 #include <iostream>
+#include <cmath>
 
 int compareReference(const char *testFileName, const char *refFileName,
                      const char *treeName = "Tree") {
