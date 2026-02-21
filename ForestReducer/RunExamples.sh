@@ -19,10 +19,11 @@ fi
 #################
 
 ./Execute \
+    --isDebug true \
     --Input inputTest/ReferenceMCFileAOD.root \
     --IsData false \
     --IsPP true \
-    --UseSvtInfo true \
+    --UseTrackVtxInfo true \
     --Output Output/outputSkimMCtest.root \
     --MinJetPT 30 \
     --Fraction 1.00 \

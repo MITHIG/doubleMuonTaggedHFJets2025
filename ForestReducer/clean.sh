@@ -1,8 +1,6 @@
 rm Execute
 rm -f *.png
 rm filterEvents
-rm -rf ../../CommonCode/binary/
-rm -rf ../../CommonCode/library/
 rm MergedOutput.root
 rm -rf Output
 rm SkimReco.root
