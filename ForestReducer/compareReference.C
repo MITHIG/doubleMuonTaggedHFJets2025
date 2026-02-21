@@ -9,6 +9,14 @@ int compareReference(const char *testFileName, const char *refFileName,
                      const char *treeName = "Tree") {
   TFile *fileTest = TFile::Open(testFileName);
   TFile *fileRef = TFile::Open(refFileName);
+  if (!fileTest || fileTest->IsZombie()) {
+    std::cerr << "Error: Unable to open test file " << testFileName << std::endl;
+    return 1;
+  }
+  if (!fileRef || fileRef->IsZombie()) {
+    std::cerr << "Error: Unable to open reference file " << refFileName << std::endl;
+    return 1;
+  }
   TTree *treeTest = (TTree *)fileTest->Get(treeName);
   TTree *treeRef = (TTree *)fileRef->Get(treeName);
 
