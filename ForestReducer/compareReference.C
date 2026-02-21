@@ -101,5 +101,5 @@ int compareReference(const char *testFileName, const char *refFileName,
         << std::endl;
   }
 
-  return 0;
+  return comparisonPassed ? 0 : 1;
 }
