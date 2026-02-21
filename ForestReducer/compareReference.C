@@ -3,6 +3,8 @@
 
 #include "TFile.h"
 #include "TH1F.h"
+#include "TCanvas.h"
+#include "TTree.h"
 #include <iostream>
 
 int compareReference(const char *testFileName, const char *refFileName,
