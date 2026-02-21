@@ -10,6 +10,10 @@ else
     exit 1
 fi
 
+if [ ! -f "inputTest/ReferenceMCFileAOD.root" ]; then
+    echo "Required input file inputTest/ReferenceMCFileAOD.root does not exist. Please add it before running this script."
+    exit 1
+fi
 #################
 ## MC pp file ###
 #################
