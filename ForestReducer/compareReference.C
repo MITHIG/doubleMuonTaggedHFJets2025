@@ -66,8 +66,26 @@ int compareReference(const char *testFileName, const char *refFileName,
   // test that the ratio is close to 1 within some tolerance
   bool comparisonPassed = true;
   for (int i = 1; i <= ratioTestRef->GetNbinsX(); ++i) {
+    // Use the original histograms to decide how to treat this bin
+    double testBin = hmumuMassTest->GetBinContent(i);
+    double refBin  = hmumuMassRef->GetBinContent(i);
+
+    // If both histograms are empty in this bin, skip it
+    if (testBin == 0.0 && refBin == 0.0) {
+      continue;
+    }
+
+    // If the reference is empty but the test is not, this is a clear discrepancy
+    if (refBin == 0.0 && testBin != 0.0) {
+      comparisonPassed = false;
+      std::cerr << "Warning: Bin " << i
+                << " has entries in the test histogram but none in the reference."
+                << std::endl;
+      continue;
+    }
+
     float ratio = ratioTestRef->GetBinContent(i);
-    if (std::abs(ratio - 1.0) > 0.0001 && ratioTestRef->GetBinContent(i) != 0) {
+    if (std::abs(ratio - 1.0) > 0.0001) {
       comparisonPassed = false;
       std::cerr << "Warning: Bin " << i << " has a ratio of " << ratio
                 << ", which is outside the tolerance." << std::endl;
