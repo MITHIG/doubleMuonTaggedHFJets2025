@@ -22,7 +22,7 @@ bool isGenMuonSelected(SingleMuTreeMessenger *M, int i);
 bool isGenMatchedJet(JetTreeMessenger *MJet, int ijet);
 bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int mu1, int mu2, float dr_cut);
 //int isOnia(float mass);
-int mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi, float dr_cut);
+int mu_trackmatch(JetTreeMessenger *MJet, float pt, float eta, float phi, float dr_cut);
 
 int main(int argc, char *argv[]) {
   string VersionString = "V8";
@@ -868,7 +868,7 @@ bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1,
 
 }*/
 
-int mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi, float dr_cut) {
+int mu_trackmatch(JetTreeMessenger *MJet, float pt, float eta, float phi, float dr_cut) {
 
   int idx = -1;
 
