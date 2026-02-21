@@ -3,7 +3,10 @@
 
 #include "TFile.h"
 #include "TH1F.h"
+#include "TCanvas.h"
+#include "TTree.h"
 #include <iostream>
+#include <cmath>
 
 int compareReference(const char *testFileName, const char *refFileName,
                      const char *treeName = "Tree") {
@@ -12,6 +15,7 @@ int compareReference(const char *testFileName, const char *refFileName,
   if (!fileTest || fileTest->IsZombie()) {
     std::cerr << "Error: Unable to open test file " << testFileName << std::endl;
     if (fileTest) { fileTest->Close(); delete fileTest; }
+    if (fileTest) fileTest->Close();
     return 1;
   }
   if (!fileRef || fileRef->IsZombie()) {
@@ -19,6 +23,7 @@ int compareReference(const char *testFileName, const char *refFileName,
     fileTest->Close();
     delete fileTest;
     if (fileRef) { fileRef->Close(); delete fileRef; }
+    if (fileRef) fileRef->Close();
     return 1;
   }
   TTree *treeTest = (TTree *)fileTest->Get(treeName);
@@ -64,8 +69,6 @@ int compareReference(const char *testFileName, const char *refFileName,
   treeTest->Draw("mumuMass>>hmumuMassTest");
   treeRef->Draw("mumuMass>>hmumuMassRef");
 
-  TCanvas *c0 = new TCanvas("c0", "Comparison of mumuMass", 800, 600);
-  c0->cd();
   TH1F *ratioTestRef = (TH1F *)hmumuMassTest->Clone("ratioTestRef");
   ratioTestRef->Divide(hmumuMassRef);
   TCanvas *c1 = new TCanvas("c1", "Comparison of mumuMass", 800, 600);
@@ -78,8 +81,26 @@ int compareReference(const char *testFileName, const char *refFileName,
   // test that the ratio is close to 1 within some tolerance
   bool comparisonPassed = true;
   for (int i = 1; i <= ratioTestRef->GetNbinsX(); ++i) {
+    // Use the original histograms to decide how to treat this bin
+    double testBin = hmumuMassTest->GetBinContent(i);
+    double refBin  = hmumuMassRef->GetBinContent(i);
+
+    // If both histograms are empty in this bin, skip it
+    if (testBin == 0.0 && refBin == 0.0) {
+      continue;
+    }
+
+    // If the reference is empty but the test is not, this is a clear discrepancy
+    if (refBin == 0.0 && testBin != 0.0) {
+      comparisonPassed = false;
+      std::cerr << "Warning: Bin " << i
+                << " has entries in the test histogram but none in the reference."
+                << std::endl;
+      continue;
+    }
+
     float ratio = ratioTestRef->GetBinContent(i);
-    if (std::abs(ratio - 1.0) > 0.0001 && ratioTestRef->GetBinContent(i) != 0) {
+    if (std::abs(ratio - 1.0) > 0.0001) {
       comparisonPassed = false;
       std::cerr << "Warning: Bin " << i << " has a ratio of " << ratio
                 << ", which is outside the tolerance." << std::endl;
@@ -106,4 +127,7 @@ int compareReference(const char *testFileName, const char *refFileName,
   delete fileRef;
 
   return 0;
+  fileTest->Close();
+  fileRef->Close();
+  return comparisonPassed ? 0 : 1;
 }
