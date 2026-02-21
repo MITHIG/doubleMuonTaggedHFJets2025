@@ -15,5 +15,7 @@ cmsRun HeavyIonsAnalysis/Configuration/test/recipe5_MC.py
 ```
 
 The important foresting configurations: recipe5_MC.py, recipe5_DATA.py will be updated both in the cmssw fork as well as this repo for easy inspection.
+The "inherited macros" are for reference and belong to https://github.com/mandrenguyen/cmssw/tree/bJetAggUL106X_bHadFix_bTagUp
+
 
 The relevant CMSSW fork branch is added as a submodule in the "cmssw_submodule" directory.
