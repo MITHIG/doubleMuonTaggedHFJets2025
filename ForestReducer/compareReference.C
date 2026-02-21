@@ -1,4 +1,4 @@
-// short script to compare the reference and the current output the
+// short script to compare the reference and the current output of the
 // RunExamples.sh test
 
 #include "TFile.h"
