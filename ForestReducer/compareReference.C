@@ -11,10 +11,14 @@ int compareReference(const char *testFileName, const char *refFileName,
   TFile *fileRef = TFile::Open(refFileName);
   if (!fileTest || fileTest->IsZombie()) {
     std::cerr << "Error: Unable to open test file " << testFileName << std::endl;
+    if (fileTest) { fileTest->Close(); delete fileTest; }
     return 1;
   }
   if (!fileRef || fileRef->IsZombie()) {
     std::cerr << "Error: Unable to open reference file " << refFileName << std::endl;
+    fileTest->Close();
+    delete fileTest;
+    if (fileRef) { fileRef->Close(); delete fileRef; }
     return 1;
   }
   TTree *treeTest = (TTree *)fileTest->Get(treeName);
@@ -23,12 +27,20 @@ int compareReference(const char *testFileName, const char *refFileName,
   if (!treeTest || !treeRef) {
     std::cerr << "Error: Tree " << treeName << " not found in one of the files."
               << std::endl;
+    fileTest->Close();
+    fileRef->Close();
+    delete fileTest;
+    delete fileRef;
     return 1;
   }
 
   if (treeTest->GetEntries() != treeRef->GetEntries()) {
     std::cerr << "Error: Number of entries in tree " << treeName
               << " does not match." << std::endl;
+    fileTest->Close();
+    fileRef->Close();
+    delete fileTest;
+    delete fileRef;
     return 1;
   }
 
@@ -82,6 +94,16 @@ int compareReference(const char *testFileName, const char *refFileName,
         << "Comparison failed: Some bins have a ratio outside the tolerance."
         << std::endl;
   }
+
+  delete c0;
+  delete c1;
+  delete ratioTestRef;
+  delete hmumuMassTest;
+  delete hmumuMassRef;
+  fileTest->Close();
+  fileRef->Close();
+  delete fileTest;
+  delete fileRef;
 
   return 0;
 }
