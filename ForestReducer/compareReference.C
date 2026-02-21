@@ -55,8 +55,6 @@ int compareReference(const char *testFileName, const char *refFileName,
   treeTest->Draw("mumuMass>>hmumuMassTest");
   treeRef->Draw("mumuMass>>hmumuMassRef");
 
-  TCanvas *c0 = new TCanvas("c0", "Comparison of mumuMass", 800, 600);
-  c0->cd();
   TH1F *ratioTestRef = (TH1F *)hmumuMassTest->Clone("ratioTestRef");
   ratioTestRef->Divide(hmumuMassRef);
   TCanvas *c1 = new TCanvas("c1", "Comparison of mumuMass", 800, 600);
