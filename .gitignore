@@ -7,3 +7,4 @@ Samples
 *.jpg
 *.jpeg
 *.o
+_codeql_detected_source_root
