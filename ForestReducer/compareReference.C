@@ -14,12 +14,15 @@ int compareReference(const char *testFileName, const char *refFileName,
   TFile *fileRef = TFile::Open(refFileName);
   if (!fileTest || fileTest->IsZombie()) {
     std::cerr << "Error: Unable to open test file " << testFileName << std::endl;
+    if (fileTest) { fileTest->Close(); delete fileTest; }
     if (fileTest) fileTest->Close();
     return 1;
   }
   if (!fileRef || fileRef->IsZombie()) {
     std::cerr << "Error: Unable to open reference file " << refFileName << std::endl;
     fileTest->Close();
+    delete fileTest;
+    if (fileRef) { fileRef->Close(); delete fileRef; }
     if (fileRef) fileRef->Close();
     return 1;
   }
@@ -31,6 +34,8 @@ int compareReference(const char *testFileName, const char *refFileName,
               << std::endl;
     fileTest->Close();
     fileRef->Close();
+    delete fileTest;
+    delete fileRef;
     return 1;
   }
 
@@ -39,6 +44,8 @@ int compareReference(const char *testFileName, const char *refFileName,
               << " does not match." << std::endl;
     fileTest->Close();
     fileRef->Close();
+    delete fileTest;
+    delete fileRef;
     return 1;
   }
 
@@ -109,6 +116,17 @@ int compareReference(const char *testFileName, const char *refFileName,
         << std::endl;
   }
 
+  delete c0;
+  delete c1;
+  delete ratioTestRef;
+  delete hmumuMassTest;
+  delete hmumuMassRef;
+  fileTest->Close();
+  fileRef->Close();
+  delete fileTest;
+  delete fileRef;
+
+  return 0;
   fileTest->Close();
   fileRef->Close();
   return comparisonPassed ? 0 : 1;
