@@ -33,6 +33,11 @@ int compareReference(const char *testFileName, const char *refFileName,
       << "Comparison successful: The number of entries in the tree matches."
       << std::endl;
 
+
+  // FIXME: this is a temporary demonstration of how to compare the contents of the tree
+  // to be replaced with a more detailed comparison of the relevant variables
+  // for example distributions that include the gen-level or gen-matched variables
+
   TH1F *hmumuMassTest = new TH1F("hmumuMassTest", "mumuMass", 100, 0, 5.);
   TH1F *hmumuMassRef = new TH1F("hmumuMassRef", "mumuMass", 100, 0, 5.);
 
