@@ -433,8 +433,8 @@ int main(int argc, char *argv[]) {
           muEta2 = MSingleMu.SingleMuEta->at(maxMu2Index);
           muPhi1 = MSingleMu.SingleMuPhi->at(maxMu1Index);
           muPhi2 = MSingleMu.SingleMuPhi->at(maxMu2Index);
-          indexMuTrackC1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1, MuTrackMatchDRCut);
-          indexMuTrackC2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2, MuTrackMatchDRCut);
+          indexMuTrackC1 = mu_trackmatch(&MJet, muPt1, muEta1, muPhi1, MuTrackMatchDRCut);
+          indexMuTrackC2 = mu_trackmatch(&MJet, muPt2, muEta2, muPhi2, MuTrackMatchDRCut);
           muCharge1 = MSingleMu.SingleMuCharge->at(maxMu1Index);
           muCharge2 = MSingleMu.SingleMuCharge->at(maxMu2Index);
           muDiDxy1 = MSingleMu.SingleMuDxy->at(maxMu1Index);
