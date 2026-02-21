@@ -376,8 +376,6 @@ int main(int argc, char *argv[]) {
 
             float muEta2 = MSingleMu.SingleMuEta->at(isinglemu2);
             float muPhi2 = MSingleMu.SingleMuPhi->at(isinglemu2);
-            int muCharge1 = MSingleMu.SingleMuCharge->at(isinglemu1);
-            int muCharge2 = MSingleMu.SingleMuCharge->at(isinglemu2);
             float dPhiMu2Jet_ = DeltaPhi(muPhi2, jetPhi);
             float dEtaMu2Jet_ = muEta2 - jetEta;
             float dRmu2Jet = sqrt(dPhiMu2Jet_ * dPhiMu2Jet_ + dEtaMu2Jet_ * dEtaMu2Jet_);
@@ -403,15 +401,15 @@ int main(int argc, char *argv[]) {
           //cout << " reco pair at entry " << iE << endl;
           isJetMuonTagged = true;
           
-          mt1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1);
-          mt2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2);
-
           muPt1 = MSingleMu.SingleMuPT->at(maxMu1Index);
           muPt2 = MSingleMu.SingleMuPT->at(maxMu2Index);
           muEta1 = MSingleMu.SingleMuEta->at(maxMu1Index);
           muEta2 = MSingleMu.SingleMuEta->at(maxMu2Index);
           muPhi1 = MSingleMu.SingleMuPhi->at(maxMu1Index);
           muPhi2 = MSingleMu.SingleMuPhi->at(maxMu2Index);
+
+          mt1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1);
+          mt2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2);
           muCharge1 = MSingleMu.SingleMuCharge->at(maxMu1Index);
           muCharge2 = MSingleMu.SingleMuCharge->at(maxMu2Index);
           muDiDxy1 = MSingleMu.SingleMuDxy->at(maxMu1Index);
@@ -423,9 +421,12 @@ int main(int argc, char *argv[]) {
           muDiDz2 = MSingleMu.SingleMuDz->at(maxMu2Index);
           muDiDz2Err = MSingleMu.SingleMuDzError->at(maxMu2Index);
           muDiDxy1Dxy2 = muDiDxy1 * muDiDxy2;
-          muDiDxy1Dxy2Err =
-              sqrt(muDiDxy1Err / muDiDxy1 * muDiDxy1Err / muDiDxy1 + muDiDxy2Err / muDiDxy2 * muDiDxy2Err / muDiDxy2) *
-              muDiDxy1Dxy2;
+          if (fabs(muDiDxy1) > 1e-10 && fabs(muDiDxy2) > 1e-10)
+            muDiDxy1Dxy2Err =
+                sqrt(muDiDxy1Err / muDiDxy1 * muDiDxy1Err / muDiDxy1 + muDiDxy2Err / muDiDxy2 * muDiDxy2Err / muDiDxy2) *
+                muDiDxy1Dxy2;
+          else
+            muDiDxy1Dxy2Err = 0;
           TLorentzVector Mu1, Mu2;
           Mu1.SetPtEtaPhiM(muPt1, muEta1, muPhi1, M_MU);
           Mu2.SetPtEtaPhiM(muPt2, muEta2, muPhi2, M_MU);
