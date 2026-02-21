@@ -1,0 +1,4 @@
+[submodule "ForestSubmission/cmssw"]
+	path = ForestSubmission/cmssw
+	url = git@github.com:AHoltermann/cmssw.git
+	branch = full_cmssw_029126
