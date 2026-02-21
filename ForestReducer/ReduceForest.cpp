@@ -19,10 +19,10 @@ double GetHFSum(PFTreeMessenger *M);
 double GetGenHFSum(GenParticleTreeMessenger *M, int SubEvent = -1);
 bool isMuonSelected(SingleMuTreeMessenger *M, int i, bool useHybrid);
 bool isGenMuonSelected(SingleMuTreeMessenger *M, int i);
-bool isFakeJet(JetTreeMessenger *MJet, int ijet);
-bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int mu1, int mu2);
+bool isGenMatchedJet(JetTreeMessenger *MJet, int ijet);
+bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int mu1, int mu2, float dr_cut);
 //int isOnia(float mass);
-std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi);
+int mu_trackmatch(JetTreeMessenger *MJet, float pt, float eta, float phi, float dr_cut);
 
 int main(int argc, char *argv[]) {
   string VersionString = "V8";
@@ -32,15 +32,39 @@ int main(int argc, char *argv[]) {
   vector<string> InputFileNames = CL.GetStringVector("Input");
   string OutputFileName = CL.Get("Output");
 
+
+  //FIXME: add settings for matching parameters
+  bool IsDebug = CL.GetBool("IsDebug", false);
   bool IsData = CL.GetBool("IsData", false);
   bool IsPP = CL.GetBool("IsPP", false);
-  bool svtx = CL.GetBool("svtx", false);
+  bool UseTrackVtxInfo = CL.GetBool("UseTrackVtxInfo", false);
   double Fraction = CL.GetDouble("Fraction", 1.00);
   double MinJetPT = CL.GetDouble("MinJetPT", 30);
   bool useHybrid = CL.GetBool("useHybrid", false);
+  double MuTrackMatchDRCut = CL.GetDouble("MuTrackMatchDRCut", 0.005);
+  double GenRecoMuonMatchDRCut = CL.GetDouble("GenRecoMuonMatchDRCut", 0.03);
   string PFJetCollection = CL.Get("PFJetCollection", "akCs3PFJetAnalyzer/t");
-  string PFTreeName = IsPP ? "pfcandAnalyzer/pfTree" : "particleFlowAnalyser/pftree";
-  PFTreeName = CL.Get("PFTree", PFTreeName);
+  //string PFTreeName = IsPP ? "pfcandAnalyzer/pfTree" : "particleFlowAnalyser/pftree";
+  //PFTreeName = CL.Get("PFTree", PFTreeName);
+
+
+  if (IsDebug){
+    cout << "================= Settings =================" << endl;
+    cout << "Input files: " << endl;
+    for (const auto& InputFileName : InputFileNames) {
+      cout << "  " << InputFileName << endl;
+    }
+    cout << "Output file: " << OutputFileName << endl;
+    cout << "IsData: " << IsData << endl;
+    cout << "IsPP: " << IsPP << endl;
+    cout << "UseTrackVtxInfo: " << UseTrackVtxInfo << endl;
+    cout << "Fraction: " << Fraction << endl;
+    cout << "MinJetPT: " << MinJetPT << endl;
+    cout << "useHybrid: " << useHybrid << endl;
+    cout << "MuTrackMatchDRCut: " << MuTrackMatchDRCut << endl;
+    cout << "GenRecoMuonMatchDRCut: " << GenRecoMuonMatchDRCut << endl;
+    cout << "PFJetCollection: " << PFJetCollection << endl;
+  }
 
   TFile OutputFile(OutputFileName.c_str(), "RECREATE");
   TTree Tree("Tree", Form("Tree for MuMu tagged jet analysis (%s)", VersionString.c_str()));
@@ -52,8 +76,7 @@ int main(int argc, char *argv[]) {
   MMuMuJet.SetBranch(&Tree);
   MGenMuMuJet.SetBranch(&GenTree);
 
-  std::vector<int> mt1 = {-1, -1};
-  std::vector<int> mt2 = {-1, -1};
+
 
   for (const auto& InputFileName : InputFileNames) {
 
@@ -113,6 +136,7 @@ int main(int argc, char *argv[]) {
       MGenMuMuJet.hiHF = MEvent.hiHF;
       MMuMuJet.NPU = 0;
       MGenMuMuJet.NPU = 0;
+      //FIXME: need to check the meaning of the npu selection code
       if (MEvent.npus->size() == 9){
         MMuMuJet.NPU = MEvent.npus->at(5);
         MGenMuMuJet.NPU = MEvent.npus->at(5);
@@ -189,7 +213,7 @@ int main(int argc, char *argv[]) {
 
       if (IsPP == true) {
         if (IsData == true) {
-
+          //FIXME: is there a 15 cm cut on the PVFilter?
           int pprimaryVertexFilter = MSkim.PVFilter;
           int beamScrapingFilter = MSkim.BeamScrapingFilter; 
           if (pprimaryVertexFilter == 0 || beamScrapingFilter == 0)
@@ -227,10 +251,14 @@ int main(int argc, char *argv[]) {
 
       // JET SELECTION
 
-      for (int ijet = 0; ijet < MJet.JetCount; ijet++) {
+      for (int ijet = 0; ijet < MJet.JetCount; ijet++) { 
+        //IDs to match muons to charged tracks in the jet constituents
+    
         if (MJet.JetPT[ijet] < MinJetPT)
           continue;
-        if (fabs(MJet.JetEta[ijet]) > 2)
+        float jetEta = MJet.JetEta[ijet];
+        float jetPhi = MJet.JetPhi[ijet];
+        if (fabs(jetEta) > 2)
           continue;
         bool passPurity = MJet.JetPFNHF[ijet] < 0.90 && MJet.JetPFNEF[ijet] < 0.90 && MJet.JetPFMUF[ijet] < 0.80 &&
                           MJet.JetPFCHF[ijet] > 0. && MJet.JetPFCHM[ijet] > 0. && MJet.JetPFCEF[ijet] < 0.80;
@@ -238,21 +266,23 @@ int main(int argc, char *argv[]) {
           continue;
 
         MMuMuJet.JetPT = MJet.JetPT[ijet];
-        MMuMuJet.JetEta = MJet.JetEta[ijet];
-        MMuMuJet.JetPhi = MJet.JetPhi[ijet];
-        MMuMuJet.JetIsGenMatched = !isFakeJet(&MJet, ijet);
+        MMuMuJet.JetEta = jetEta;
+        MMuMuJet.JetPhi = jetPhi;
+        if (!IsData) MMuMuJet.JetIsGenMatched = isGenMatchedJet(&MJet, ijet);
 
         // ADD FLAVOR INFO -- note that only a few of these branches are implemented for PbPb
-        MMuMuJet.HadronFlavor = IsPP ? MJet.HadronFlavor[ijet] : MJet.MJTHadronFlavor[ijet];
-        MMuMuJet.PartonFlavor = MJet.PartonFlavor[ijet];
         MMuMuJet.NcHad = IsPP ? MJet.NcHad[ijet] : MJet.MJTNcHad[ijet];
         MMuMuJet.NbHad = IsPP ? MJet.NbHad[ijet] : MJet.MJTNbHad[ijet];
+
+        // Parton-level matching variables -- currently not used
+        MMuMuJet.HadronFlavor = IsPP ? MJet.HadronFlavor[ijet] : MJet.MJTHadronFlavor[ijet];
+        MMuMuJet.PartonFlavor = MJet.PartonFlavor[ijet];
         MMuMuJet.NbPar = MJet.NbPar[ijet];
         MMuMuJet.NcPar = MJet.NcPar[ijet];
         MMuMuJet.HasGSPB = MJet.HasGSPB[ijet];
         MMuMuJet.HasGSPC = MJet.HasGSPC[ijet];
 
-        // ADD TAGGING INFO
+        // ADD TAGGING INFO. Particle-Net probabilities.
         MMuMuJet.PN_bb = MJet.PN_bb[ijet];
         MMuMuJet.PN_b = MJet.PN_b[ijet];
         MMuMuJet.PN_cc = MJet.PN_cc[ijet];
@@ -262,16 +292,17 @@ int main(int argc, char *argv[]) {
         MMuMuJet.PN_g = MJet.PN_g[ijet];
         MMuMuJet.PN_pu = MJet.PN_pu[ijet];
 
-        // # of vertices + tracks 
+        // # of secondary vertices in each jet and # of tracks
+        // associated to the jet (not necessarily from the SV)
         MMuMuJet.jtNsvtx = MJet.jtNsvtx[ijet];
         MMuMuJet.jtNtrk = MJet.jtNtrk[ijet];
 
-        if (svtx) {
+        if (UseTrackVtxInfo) {
 
           // ADD SVTX INFORMATION
 
           for (int isvtx = 0; isvtx < MJet.nsvtx; isvtx++) {
-
+            // check to ensure that the SVT is associated to the jet of interest
             if (MJet.svtxJetId[isvtx] == ijet) {
 
               MMuMuJet.svtxJetId->push_back(MJet.svtxJetId[isvtx]);
@@ -285,16 +316,13 @@ int main(int argc, char *argv[]) {
               MMuMuJet.svtxpt->push_back(MJet.svtxpt[isvtx]);
               MMuMuJet.svtxnormchi2->push_back(MJet.svtxnormchi2[isvtx]);
               MMuMuJet.svtxchi2->push_back(MJet.svtxchi2[isvtx]);
-
-
             }
-          }
+          }// end of loop over SVTs in the jet
 
           for (int itrk = 0; itrk < MJet.ntrk; itrk++) {
             if (MJet.trkJetId[itrk] == ijet) {
 
               // ADD TRACK INFORMATION
-
               MMuMuJet.trkJetId->push_back(MJet.trkJetId[itrk]);
               MMuMuJet.trkSvtxId->push_back(MJet.trkSvtxId[itrk]);
               MMuMuJet.trkPt->push_back(MJet.trkPt[itrk]);
@@ -310,16 +338,15 @@ int main(int argc, char *argv[]) {
               MMuMuJet.trkIpProb2d->push_back(MJet.trkIpProb2d[itrk]);
               MMuMuJet.trkDz->push_back(MJet.trkDz[itrk]);
               MMuMuJet.trkPdgId->push_back(MJet.trkPdgId[itrk]);
-              MMuMuJet.trkMatchSta->push_back(MJet.trkMatchSta[itrk]);
-
-              
+              MMuMuJet.trkMatchSta->push_back(MJet.trkMatchSta[itrk]); 
             }
-          }
+          } // end of loop over tracks in the jet
+        } // end if UseTrackVtxInfo
 
-        }
-
+        int indexMuTrackC1 = -1;
+        int indexMuTrackC2 = -1;
         bool isJetMuonTagged = false;
-        int nMu = 0;
+        int nMu = 0; //number of selected muons in the jet cone (no charge condition)
         float muPt1 = -999.;
         float muPt2 = -999.;
         float muEta1 = -999.;
@@ -358,8 +385,6 @@ int main(int argc, char *argv[]) {
         for (int isinglemu1 = 0; isinglemu1 < nSingleMu; isinglemu1++) {
           if (isMuonSelected(&MSingleMu, isinglemu1, useHybrid) == false) continue;
           
-          float jetEta = MJet.JetEta[ijet];
-          float jetPhi = MJet.JetPhi[ijet];
           float muEta1 = MSingleMu.SingleMuEta->at(isinglemu1);
           float muPhi1 = MSingleMu.SingleMuPhi->at(isinglemu1);
           float dPhiMu1Jet_ = DeltaPhi(muPhi1, jetPhi);
@@ -370,9 +395,6 @@ int main(int argc, char *argv[]) {
 
           for (int isinglemu2 = isinglemu1 + 1; isinglemu2 < nSingleMu; isinglemu2++) {
             if (isMuonSelected(&MSingleMu, isinglemu2, useHybrid) == false) continue;
-            // if (charge1 == charge2)
-            // continue;
-            
 
             float muEta2 = MSingleMu.SingleMuEta->at(isinglemu2);
             float muPhi2 = MSingleMu.SingleMuPhi->at(isinglemu2);
@@ -383,14 +405,11 @@ int main(int argc, char *argv[]) {
             float dRmu2Jet = sqrt(dPhiMu2Jet_ * dPhiMu2Jet_ + dEtaMu2Jet_ * dEtaMu2Jet_);
             if (dRmu2Jet > 0.3)
               continue;
-
-            
+ 
             TLorentzVector Mu1, Mu2;
             Mu1.SetPtEtaPhiM(MSingleMu.SingleMuPT->at(isinglemu1), muEta1, muPhi1, M_MU);
             Mu2.SetPtEtaPhiM(MSingleMu.SingleMuPT->at(isinglemu2), muEta2, muPhi2, M_MU);
             TLorentzVector MuMu = Mu1 + Mu2;
-            //if (fabs(MuMu.Eta()) > 2.4)
-            // continue;
             if (MuMu.Pt() > maxmumuPt) {
               maxmumuPt = MuMu.Pt();
               maxMu1Index = isinglemu1;
@@ -398,20 +417,24 @@ int main(int argc, char *argv[]) {
             } // end if dimuon pT larger than current max
           } // end loop over single muon 2
         } // end loop over single muon 1
-
+        
+        //FIXME: a fatal error message should be issued if the dimuon pT > = 8 but the muon ids are not > = 0
+        //FIXME: check that all the indices are defined non negative 
         if (maxmumuPt > 0. && maxMu1Index >= 0 && maxMu2Index >= 0) {
           //cout << " reco pair at entry " << iE << endl;
-          isJetMuonTagged = true;
-          
-          mt1 = mu_trackmatch(&MJet, ijet, muPt1, muEta1, muPhi1);
-          mt2 = mu_trackmatch(&MJet, ijet, muPt2, muEta2, muPhi2);
+          // INFO: at this stage, we have only selected jets containing at least two selected muons (in the jet cone) 
+          //       with no charge condition applied. For jets containing more than  2 muons, 
+          //       the pair with the highest dimuon pT considered. 
 
+          isJetMuonTagged = true;         
           muPt1 = MSingleMu.SingleMuPT->at(maxMu1Index);
           muPt2 = MSingleMu.SingleMuPT->at(maxMu2Index);
           muEta1 = MSingleMu.SingleMuEta->at(maxMu1Index);
           muEta2 = MSingleMu.SingleMuEta->at(maxMu2Index);
           muPhi1 = MSingleMu.SingleMuPhi->at(maxMu1Index);
           muPhi2 = MSingleMu.SingleMuPhi->at(maxMu2Index);
+          indexMuTrackC1 = mu_trackmatch(&MJet, muPt1, muEta1, muPhi1, MuTrackMatchDRCut);
+          indexMuTrackC2 = mu_trackmatch(&MJet, muPt2, muEta2, muPhi2, MuTrackMatchDRCut);
           muCharge1 = MSingleMu.SingleMuCharge->at(maxMu1Index);
           muCharge2 = MSingleMu.SingleMuCharge->at(maxMu2Index);
           muDiDxy1 = MSingleMu.SingleMuDxy->at(maxMu1Index);
@@ -436,8 +459,6 @@ int main(int argc, char *argv[]) {
           mumuPhi = MuMu.Phi();
           mumuPt = MuMu.Pt();
           //mumuisOnia = isOnia(mumuMass);
-          float jetEta = MJet.JetEta[ijet];
-          float jetPhi = MJet.JetPhi[ijet];
           float dPhiMu1Jet_ = DeltaPhi(muPhi1, jetPhi);
           float dEtaMu1Jet_ = muEta1 - jetEta;
           float dPhiMu2Jet_ = DeltaPhi(muPhi2, jetPhi);
@@ -481,22 +502,18 @@ int main(int argc, char *argv[]) {
         MMuMuJet.muDphi= muDphi;
         MMuMuJet.muDR= muDR;
 
-        MMuMuJet.trkIdx_mu1 = mt1[0];
-        MMuMuJet.trkIdx_mu2 = mt2[0];
-        MMuMuJet.svtxIdx_mu1 = mt1[1];
-        MMuMuJet.svtxIdx_mu2 = mt2[1];
+        MMuMuJet.trkIdx_mu1 = indexMuTrackC1;
+        MMuMuJet.trkIdx_mu2 = indexMuTrackC2;
+        MMuMuJet.svtxIdx_mu1 = (indexMuTrackC1 >= 0) ? MJet.trkSvtxId[indexMuTrackC1] : -1;
+        MMuMuJet.svtxIdx_mu2 = (indexMuTrackC2 >= 0) ? MJet.trkSvtxId[indexMuTrackC2] : -1;
 
-        mt1.clear();
-        mt2.clear();
-
-        // Gen muon info  
-
-	      bool GenIsJetMuonTagged = false;
+        // Gen muon info 
+	bool GenIsJetMuonTagged = false;
         bool GenIsRecoMatched = false;
         int nGenMu = 0;
         float GenMuPt1 = -999;
         float GenMuPt2 = -999;
-	      float GenMuEta1 = -999; 
+	float GenMuEta1 = -999; 
         float GenMuEta2 = -999; 
         float GenMuPhi1 = -999;
         float GenMuPhi2 = -999; 
@@ -517,8 +534,8 @@ int main(int argc, char *argv[]) {
         int maxGenMu1Index = -1;
         int maxGenMu2Index = -1;
 
-        int nGenSingleMu = MSingleMu.GenSingleMuPT->size(); 
-        
+        int nGenSingleMu = MSingleMu.GenSingleMuPT->size();
+        //FIXME: be aware that we are matching reco muons with gen muons within the reco jet.
         for(int igen1 = 0; igen1 < nGenSingleMu; igen1++){ 
           if(isGenMuonSelected(&MSingleMu, igen1) == false) continue;
 
@@ -531,19 +548,23 @@ int main(int argc, char *argv[]) {
           nGenMu++;
           
           for(int igen2 = igen1 + 1; igen2 < nGenSingleMu; igen2++){
-              if(isGenMuonSelected(&MSingleMu, igen2) == false) continue;
-
-              
+              if(isGenMuonSelected(&MSingleMu, igen2) == false) continue; 
               float dPhiMu2Jet_ = DeltaPhi(MSingleMu.GenSingleMuPhi->at(igen2), jetPhi);
               float dEtaMu2Jet_ = MSingleMu.GenSingleMuEta->at(igen2) - jetEta;
               float dRMu2Jet = sqrt(dPhiMu2Jet_*dPhiMu2Jet_ + dEtaMu2Jet_*dEtaMu2Jet_);
               if (dRMu2Jet > 0.3) continue;
 
+              // in the section below, for each pair of selected gen-level muon and for jets with a selected dimuon pair, 
+              // we match the gen-level dimuon to the reco-level dimuon with a delta R condition. 
+              // we are considering matched cases in which the reco dimuon is matched to the gen dimuon
+              // but the gen dimuon is not necessarily the leading pT pair among the gen muons in the jet cone. 
               if(isJetMuonTagged && GenIsRecoMatched == false){
-                if(isDimuonGenMatched(&MSingleMu, igen1, igen2,maxMu1Index, maxMu2Index)){ //recording a match if ANY pair of muons match reco-gen, not just pT leading
+                if(isDimuonGenMatched(&MSingleMu, igen1, igen2, maxMu1Index, maxMu2Index, GenRecoMuonMatchDRCut)){
+                  //recording a match if ANY pair of muons match reco-gen, not just pT leading
                   GenIsRecoMatched = true;
                 }
               }
+              //FIXME: be aware that we always using the leading-pT dimuon gen pair
 
               TLorentzVector GenMu1, GenMu2;
               GenMu1.SetPtEtaPhiM(MSingleMu.GenSingleMuPT->at(igen1), MSingleMu.GenSingleMuEta->at(igen1), MSingleMu.GenSingleMuPhi->at(igen1), M_MU);
@@ -560,8 +581,8 @@ int main(int argc, char *argv[]) {
             }
           }
 
-        if(maxGenmumuPt > 0. && maxGenMu1Index >= 0 && maxGenMu2Index >= 0){ // STILL FILLING WITH THE LEADING PT DIMUON PROPERTIES
-          //cout << "gen pair at entry " << iE << endl;
+        if(maxGenmumuPt > 0. && maxGenMu1Index >= 0 && maxGenMu2Index >= 0){
+          // FIXME: STILL FILLING WITH THE LEADING PT DIMUON PROPERTIES
           GenIsJetMuonTagged = true;
           
           GenMuPt1 = MSingleMu.GenSingleMuPT->at(maxGenMu1Index);
@@ -614,6 +635,8 @@ int main(int argc, char *argv[]) {
         MMuMuJet.GenMuDR = GenMuDR;
 
         ////// EXTRA MUON WEIGHT //////)
+        //FIXME: TnP weights are given for HybridSoft PbPb. We need to implement the TnP weights for pp SoftMVAID.
+
         MMuMuJet.MuMuWeight = 1.0;
         MMuMuJet.ExtraMuWeight->assign(12, 1.0); // 12 sources of systematics
         if(isJetMuonTagged){
@@ -660,10 +683,7 @@ int main(int argc, char *argv[]) {
           MGenMuMuJet.GenJetIsRecoMatched = true;
         }
         MGenMuMuJet.FillEntry();
-      }
-
-      
-      
+      } 
     } // end loop over events
 
     Bar.Update(EntryCount);
@@ -746,6 +766,7 @@ bool isMuonSelected(SingleMuTreeMessenger *M, int i, bool useHybrid) {
     if ((M->SingleMuIsTracker->at(i) == 0 && M->SingleMuIsGlobal->at(i) == 0) || M->SingleMuHybridSoft->at(i) == 0 ||
       M->SingleMuIsGood->at(i) == 0 || M->SingleMuIsHighPurity->at(i) == 0) return false; // HYBRID + HIGH PURITY
   }
+  //FIXME: SingleMuSoft should be called SingleSoftMVA
   else {
     if ((M->SingleMuIsTracker->at(i) == 0 && M->SingleMuIsGlobal->at(i) == 0) || M->SingleMuSoft->at(i) == 0 ||
         M->SingleMuIsGood->at(i) == 0) return false; // REPLACING HYBRID SOFT WITH SOFT
@@ -767,7 +788,7 @@ bool isGenMuonSelected(SingleMuTreeMessenger *M, int i) {
   return true;
 }
 
-bool isFakeJet(JetTreeMessenger *MJet, int ijet) {
+bool isGenMatchedJet(JetTreeMessenger *MJet, int ijet) {
   if (MJet == nullptr)
     return false;
   if (MJet->Tree == nullptr)
@@ -775,14 +796,14 @@ bool isFakeJet(JetTreeMessenger *MJet, int ijet) {
 
   for(int igen = 0; igen < MJet->GenCount; igen++){
     if(MJet->GenMatchIndex[igen] == ijet){
-      return false;
+      return true;
     }
   }
 
-  return true;
+  return false;
 }
 
-bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1, int reco2) {
+bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1, int reco2, float dr_cut) {
   if (M == nullptr)
     return false;
   if (M->Tree == nullptr)
@@ -809,14 +830,12 @@ bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1,
   float dr21 = sqrt(dphi21 * dphi21 + deta21 * deta21);
   bool chargemismatch21 = (M->GenSingleMuPID->at(gen2) * M->SingleMuCharge->at(reco1) > 0);
 
-  if((dr11 < 0.03) && (dr22 < 0.03) && !chargemismatch11 && !chargemismatch22){
+  if((dr11 < dr_cut) && (dr22 < dr_cut) && !chargemismatch11 && !chargemismatch22){
     return true;
   }
-  if((dr12 < 0.03) && (dr21 < 0.03) && !chargemismatch12 && !chargemismatch21){
+  if((dr12 < dr_cut) && (dr21 < dr_cut) && !chargemismatch12 && !chargemismatch21){
     return true;
   }
-
-
   return false;
 }
 
@@ -848,25 +867,20 @@ bool isDimuonGenMatched(SingleMuTreeMessenger *M, int gen1, int gen2, int reco1,
 
 }*/
 
-std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, float eta, float phi){
+int mu_trackmatch(JetTreeMessenger *MJet, float pt, float eta, float phi, float dr_cut) {
 
-  float dr_cut = 0.0004; // SUBJECT TO TUNING
-  std::vector<int> idx = {-1, -1};
-  std::vector<int> bad = {-1, -1};
+  int idx = -1;
 
-  if (MJet == nullptr) {
-    return bad;
+  if (MJet == nullptr){
+    return -1;
   }
   if (MJet->Tree == nullptr) {
-    return bad;
+    return -1;
   }
 
-  int c = 0;
+  int nFound = 0;
   for (int i = 0; i < MJet->ntrk; i++) {
-    // if(MJet->trkJetId[i] != jetno){continue;}
-    //if (fabs(MJet->trkPt[i] - pt) > 5) {
-    //  continue;
-    //}
+    //FIXME: do we need this condition?
     if (fabs(MJet->trkPdgId[i]) != 13) {
       continue;
     }
@@ -874,15 +888,14 @@ std::vector<int> mu_trackmatch(JetTreeMessenger *MJet, int jetno, float pt, floa
     float dPhi = DeltaPhi(MJet->trkPhi[i], phi);
 
     float dR = sqrt(dEta * dEta + dPhi * dPhi);
-    if(dR > dr_cut){continue;}
+    if(dR > dr_cut) continue;
 
-    c += 1;
-    idx[0] = i;
-    idx[1] = MJet->trkSvtxId[i];
+    nFound += 1;
+    idx = i;
   }
 
-  if (c != 1) {
-    return bad;
+  if (nFound != 1) {
+    return -1;
   } else {
     return idx;
   }
