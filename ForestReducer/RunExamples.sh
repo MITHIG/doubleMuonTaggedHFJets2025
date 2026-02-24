@@ -19,7 +19,7 @@ fi
 #################
 
 ./Execute \
-    --isDebug true \
+    --IsDebug true \
     --Input inputTest/ReferenceMCFileAOD.root \
     --IsData false \
     --IsPP true \
@@ -28,6 +28,9 @@ fi
     --MinJetPT 30 \
     --Fraction 1.00 \
     --useHybrid false \
+    --MuTrackMatchDRCut 0.001 \
+    --GenRecoMuonMatchDRCut 0.03 \
+    --applyConstituentMatching false \
     --PFJetCollection ak3PFJetAnalyzer/t
 
 
