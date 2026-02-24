@@ -41,8 +41,9 @@ int main(int argc, char *argv[]) {
   double Fraction = CL.GetDouble("Fraction", 1.00);
   double MinJetPT = CL.GetDouble("MinJetPT", 30);
   bool useHybrid = CL.GetBool("useHybrid", false);
-  double MuTrackMatchDRCut = CL.GetDouble("MuTrackMatchDRCut", 0.005);
+  double MuTrackMatchDRCut = CL.GetDouble("MuTrackMatchDRCut", 0.001);
   double GenRecoMuonMatchDRCut = CL.GetDouble("GenRecoMuonMatchDRCut", 0.03);
+  bool applyConstituentMatching = CL.GetBool("applyConstituentMatching", false);
   string PFJetCollection = CL.Get("PFJetCollection", "akCs3PFJetAnalyzer/t");
   //string PFTreeName = IsPP ? "pfcandAnalyzer/pfTree" : "particleFlowAnalyser/pftree";
   //PFTreeName = CL.Get("PFTree", PFTreeName);
@@ -173,7 +174,9 @@ int main(int argc, char *argv[]) {
         MGenMuMuJet.NVertex = MGenMuMuJet.NVertex + 1;
       }
 
+      float VZ = 0;
       if (BestVertex >= 0) {
+        VZ = IsPP ? MTrackPP.zVtx->at(BestVertex) : MTrack.VZ->at(BestVertex);
         MMuMuJet.VX = IsPP ? MTrackPP.xVtx->at(BestVertex) : MTrack.VX->at(BestVertex);
         MMuMuJet.VY = IsPP ? MTrackPP.yVtx->at(BestVertex) : MTrack.VY->at(BestVertex);
         MMuMuJet.VZ = IsPP ? MTrackPP.zVtx->at(BestVertex) : MTrack.VZ->at(BestVertex);
@@ -213,10 +216,9 @@ int main(int argc, char *argv[]) {
 
       if (IsPP == true) {
         if (IsData == true) {
-          //FIXME: is there a 15 cm cut on the PVFilter?
           int pprimaryVertexFilter = MSkim.PVFilter;
           int beamScrapingFilter = MSkim.BeamScrapingFilter; 
-          if (pprimaryVertexFilter == 0 || beamScrapingFilter == 0)
+          if (pprimaryVertexFilter == 0 || beamScrapingFilter == 0 || fabs(VZ) > 15)
             continue;
           
           if( !MMuMuJet.HLT_HIAK4PFJet30_v1 && !MMuMuJet.HLT_HIAK4PFJet40_v1 && !MMuMuJet.HLT_HIAK4PFJet60_v1 &&
@@ -391,6 +393,7 @@ int main(int argc, char *argv[]) {
           float dEtaMu1Jet_ = muEta1 - jetEta;
           float dRmu1Jet = sqrt(dPhiMu1Jet_ * dPhiMu1Jet_ + dEtaMu1Jet_ * dEtaMu1Jet_);
           if (dRmu1Jet > 0.3) continue;
+          if(applyConstituentMatching && mu_trackmatch(&MJet, MSingleMu.SingleMuPT->at(isinglemu1), muEta1, muPhi1, MuTrackMatchDRCut) < 0) continue;
           nMu++;
 
           for (int isinglemu2 = isinglemu1 + 1; isinglemu2 < nSingleMu; isinglemu2++) {
@@ -403,9 +406,9 @@ int main(int argc, char *argv[]) {
             float dPhiMu2Jet_ = DeltaPhi(muPhi2, jetPhi);
             float dEtaMu2Jet_ = muEta2 - jetEta;
             float dRmu2Jet = sqrt(dPhiMu2Jet_ * dPhiMu2Jet_ + dEtaMu2Jet_ * dEtaMu2Jet_);
-            if (dRmu2Jet > 0.3)
-              continue;
- 
+            if (dRmu2Jet > 0.3) continue;
+            if(applyConstituentMatching && mu_trackmatch(&MJet, MSingleMu.SingleMuPT->at(isinglemu2), muEta2, muPhi2, MuTrackMatchDRCut) < 0) continue;
+
             TLorentzVector Mu1, Mu2;
             Mu1.SetPtEtaPhiM(MSingleMu.SingleMuPT->at(isinglemu1), muEta1, muPhi1, M_MU);
             Mu2.SetPtEtaPhiM(MSingleMu.SingleMuPT->at(isinglemu2), muEta2, muPhi2, M_MU);
@@ -421,6 +424,9 @@ int main(int argc, char *argv[]) {
         //FIXME: a fatal error message should be issued if the dimuon pT > = 8 but the muon ids are not > = 0
         //FIXME: check that all the indices are defined non negative 
         if (maxmumuPt > 0. && maxMu1Index >= 0 && maxMu2Index >= 0) {
+          if(maxmumuPt > 8.0 && (maxMu1Index < 0 || maxMu2Index < 0)){
+            throw std::runtime_error("FATAL ERROR: dimuon pT > 8.0 but muon indices are invalid!");
+          }
           //cout << " reco pair at entry " << iE << endl;
           // INFO: at this stage, we have only selected jets containing at least two selected muons (in the jet cone) 
           //       with no charge condition applied. For jets containing more than  2 muons, 
