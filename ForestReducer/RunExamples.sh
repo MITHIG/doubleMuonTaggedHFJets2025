@@ -3,32 +3,21 @@ source clean.sh
 rm -rf Output/
 mkdir -p Output/
 
-if [ -d "inputTest" ]; then
-    echo "Directory inputTest exists."
-else
-    echo "Directory inputTest does not exist. Please create it and add the necessary files."
-    exit 1
-fi
-
-if [ ! -f "inputTest/ReferenceMCFileAOD.root" ]; then
-    echo "Required input file inputTest/ReferenceMCFileAOD.root does not exist. Please add it before running this script."
-    exit 1
-fi
+INPUTDIR="/eos/cms/store/group/phys_heavyions/aholterm/g2qqbar/testforest"
 #################
 ## MC pp file ###
 #################
 
-./Execute \
-    --isDebug true \
-    --Input inputTest/ReferenceMCFileAOD.root \
-    --IsData false \
-    --IsPP true \
-    --UseTrackVtxInfo true \
-    --Output Output/outputSkimMCtest.root \
-    --MinJetPT 30 \
-    --Fraction 1.00 \
-    --useHybrid false \
-    --PFJetCollection ak3PFJetAnalyzer/t
+./RunParallelMC_xrdcp.sh "$INPUTDIR" "Output" \
+        --PFJetCollection "ak3PFJetAnalyzer/t" \
+        --UseHybrid false \
+        --MinJetPT 0 \
+        --Fraction 1.0 \
+        --IsDebug false \
+        --UseTrackVtxInfo false \
+        --MuTrackMatchDRCut 0.001 \
+        --GenRecoMuonMatchDRCut 0.03 \
+        --ApplyConstituentMatching false
 
 
 # colors
@@ -39,7 +28,7 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Running reference comparison...${NC}"
 
-root -l -b -q "compareReference.C(\"Output/outputSkimMCtest.root\",\"OutputReference/output_ReferenceMCFileAOD.root\")"
+root -l -b -q "compareReference.C(\"Output/mergedfile.root\",\"OutputReference/output_ReferenceMCFileAOD.root\")"
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Comparison FAILED${NC}"

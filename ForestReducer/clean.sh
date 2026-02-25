@@ -13,9 +13,9 @@ CURRENTDIR=$PWD
 cd /home/$USER/CMSSW_13_2_4/src
 cmsenv
 
-cd -
+cd $CURRENTDIR
 echo "CMSSW environment is set up"
-cd ../../
+cd ../
 source SetupAnalysis.sh
 cd CommonCode/
 make

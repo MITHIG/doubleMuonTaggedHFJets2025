@@ -61,8 +61,8 @@ int compareReference(const char *testFileName, const char *refFileName,
   // to be replaced with a more detailed comparison of the relevant variables
   // for example distributions that include the gen-level or gen-matched variables
 
-  TH1F *hmumuMassTest = new TH1F("hmumuMassTest", "mumuMass", 100, 0, 5.);
-  TH1F *hmumuMassRef = new TH1F("hmumuMassRef", "mumuMass", 100, 0, 5.);
+  TH1F *hmumuMassTest = new TH1F("hmumuMassTest", "mumuMass", 100, 0, 7.);
+  TH1F *hmumuMassRef = new TH1F("hmumuMassRef", "mumuMass", 100, 0, 7.);
 
   treeTest->Draw("mumuMass>>hmumuMassTest");
   treeRef->Draw("mumuMass>>hmumuMassRef");
