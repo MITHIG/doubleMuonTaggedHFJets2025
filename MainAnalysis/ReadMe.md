@@ -1,0 +1,59 @@
+## G2bbbar Analysis Code
+
+The code is structured to follow 3 macros: 
+- Efficiencies.cc
+- MakeDistros.cc 
+- Yields.cc
+
+They are designed to be run in sequence, and the outputs of one are the inputs to the other. To run the analysis code normally, just execute 
+```
+./run_analysis.sh
+```
+
+
+### Efficiencies.cc
+
+The purpose of Efficiencies.cc is to derive and save all of the corrections we will be using in the analysis to one place. So far, it is only configured to save the reconstruction efficiency.
+- Input skim file name
+- output file name 
+- IsData (i.e. not MC) parameter
+- pT Bins
+- Single muon pT cutoff
+- Charge selection (0 -> No selection, 1-> same sign, -1-> opposite sign)
+- makeplots (writes auxiliary plots to .pdf files + a plotting directory in the output root file)
+
+The file will produce an output file containing all of the necessary correction histograms. For now it is simply inclusive jet yield (and efficiency and purity) alongside dimuon jet yield (reconstruction efficiency and purity)
+
+### MakeDistros.cc
+
+MakeDistros.cc will produce distributions for the dimuons in DCA (product significance), Mass, DR between muons, Dimuon Z etc. When operating on a MC sample, the macro will build individual distributions for each jet flavor class to be used as templates in the yield extraction. When operating on a Data sample, the macro will only create the overall distributions to be used as an input for template fitting in the yield extraction. This macro additionally will stitch the various data spectra/triggers together. Small TNtuples are also created to allow for a binless fitting. Right now it is not used, but MakeDistros macro inherits the efficiency corrections from the previous macro to allow the option to apply these corrections while constructing the template shapes. 
+
+ As inputs the macro uses 
+- Input file name
+- Output file name
+- IsData 
+- DataTrigger (40, 60, or 80 for different jet triggers)
+- Charge Selection 
+- pT bins
+- Single muon pT cutoff
+- WeightMC (applies pThat + other MC weights)
+- makeplots 
+
+MakeDistros will save all of the above template and inclusive histograms to a root file, as well as the template ntuples
+
+### Yields.cc
+
+In Yields.cc we extract Light and Heavy flavor yields using a binless 1D template fit to the dimuon fragmentation function and dR distribution simultaneously. Note that despite having a bunch of different flavor classes, we perform this fitting using only 2 parameters: the amount of LF and the amount of HF (assuming all HF flavor classes have fixed ratios wrt each other) The inputs to this macro are simply the templates and distributions extracted in the previous step. 
+
+- Input file name (this file contains the distributions that will be fitted)
+- Template file name 
+- Output file name
+- Pt bins
+- variables (string vector of variable names to fit simultaneously)
+- kde (kernel widths)
+- fitrangeMin 
+- fitrangeMax (fit range boundaries, float vector)
+- chargeSelection
+- makeplots
+
+Yields will save the HF and LF yields, HF fraction, and Total Yield to a root file. 

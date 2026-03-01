@@ -14,7 +14,13 @@ git cms-init
 git cms-addpkg Configuration/Generator
 scram b -j8
 
-cp $HOMEDIR/Pythia8_HardQCD_EvtGen.py  Configuration/Generator/python
-cp $HOMEDIR/Pythia8_HardQCD_EvtGen_Filtered.py Configuration/Generator/python
+cp $HOMEDIR/GenFragments/*  Configuration/Generator/python
 
 cd $HOMEDIR
+
+cp crabConfigs/crab_step1_GENSIM.py $HOMEDIR/CMSSW_10_6_26/src/
+cp crabConfigs/crab_step2_DIGI.py $HOMEDIR/CMSSW_10_6_29/src/
+cp crabConfigs/crab_step3_HLT.py $HOMEDIR/CMSSW_9_4_14_UL_patch1/src/
+cp crabConfigs/crab_step4_RECO.py $HOMEDIR/CMSSW_10_6_29/src/
+cp crabConfigs/crab_step5_MINIAOD.py $HOMEDIR/CMSSW_10_6_29/src/
+

@@ -1,7 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.Generator.Pythia8CommonSettings_cfi import *
-#from Configuration.Generator.MCTunesRun3ECM13p6TeV.PythiaCP5Settings_cfi import *
 from Configuration.Generator.MCTunes2017.PythiaCP5Settings_cfi import *
 
 from GeneratorInterface.EvtGenInterface.EvtGenSetting_cff import *
@@ -63,3 +62,21 @@ from GeneratorInterface.Core.ExternalGeneratorFilter import ExternalGeneratorFil
 generator = ExternalGeneratorFilter(_generator)
 
 ProductionFilterSequence = cms.Sequence(generator)
+
+mumugenfilter = cms.EDFilter("MCParticlePairFilter",
+                             Status = cms.untracked.vint32(1, 1),
+                             MinPt = cms.untracked.vdouble(2.5, 2.5),
+                             MinP = cms.untracked.vdouble(2.5, 2.5),
+                             MaxEta = cms.untracked.vdouble(3.0, 3.0),
+                             MinEta = cms.untracked.vdouble(-3.0, -3.0),
+                             MaxDeltaR = cms.untracked.double(0.8), # assumed safe for R=0.4 jets
+                             ParticleCharge = cms.untracked.int32(0), # accept same sign
+                             ParticleID1 = cms.untracked.vint32(13),
+                             ParticleID2 = cms.untracked.vint32(13)
+)
+
+configurationMetadata = cms.untracked.PSet(
+    annotation = cms.untracked.string('PYTHIA 8 (unquenched) dijets in NN (pt-hat > 15 GeV; pt-hat < 1200 GeV, weighted, TuneCP5) at sqrt(s) = 5.02 TeV')
+    )
+
+ProductionFilterSequence = cms.Sequence(generator*mumugenfilter)

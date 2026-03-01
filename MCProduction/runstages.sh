@@ -1,7 +1,43 @@
 #!/bin/bash
 # NOTE: Run voms-proxy-init --voms cms --valid 168:00 before this script.
 
-NEVTS=10
+NEVTS=100
+N_PYTHIAEVTS=$((1000 * NEVTS)) # to account for filter inefficiency
+
+useHerwig=false
+useEvtGen=true
+useDimuonFilter=true
+useNoExec=true
+
+NO_EXEC_ARG=""
+if [ "$useNoExec" = true ] ; then
+  NO_EXEC_ARG="--no_exec"
+fi
+
+FRAGMENT=""
+
+if [ "$useHerwig" = true ] ; then
+  if [ "$useDimuonFilter" = true ] ; then
+    FRAGMENT="herwig7ch3_QCDjets_pThat15_pp5p02TeV_DimuonFilter.py"
+  else
+    FRAGMENT="herwig7ch3_QCDjets_pThat15_pp5p02TeV.py"
+  fi
+elif [ "$useEvtGen" = true ] ; then
+  if [ "$useDimuonFilter" = true ] ; then
+    FRAGMENT="pythia8cp5_QCDjets_evtGen_dimuonFiltered_pThat15_pp5p02TeV.py"
+  else
+    FRAGMENT="pythia8cp5_QCDjets_evtGen_pThat15_pp5p02TeV.py"
+  fi
+else
+  if [ "$useDimuonFilter" = true ] ; then
+    FRAGMENT="pythia8cp5_QCDjets_dimuonFiltered_pThat15_pp5p02TeV.py"
+  else
+    FRAGMENT="pythia8cp5_QCDjets_pThat15_pp5p02TeV.py"
+  fi
+fi
+
+echo "Using fragment: $FRAGMENT"
+echo "Beginning generation"
 
 HOMEDIR=$PWD
 echo "HOME DIRECTORY: $HOMEDIR"
@@ -14,7 +50,7 @@ cmsenv
 
 echo "Running step 1: GEN-SIM"
 
-cmsDriver.py Pythia8_HardQCD_EvtGen.py \
+cmsDriver.py $FRAGMENT \
   --mc \
   --eventcontent RAWSIM \
   --datatier GEN-SIM \
@@ -25,11 +61,13 @@ cmsDriver.py Pythia8_HardQCD_EvtGen.py \
   --era Run2_2017_ppRef \
   --fileout file:step1.root \
   --python_filename step1_GEN_SIM.py \
-  -n $NEVTS
+  $NO_EXEC_ARG \
+  -n $N_PYTHIAEVTS \
+  --number_out $NEVTS
 
 #cmsRun step1_GEN_SIM.py
 
-mv *.py $HOMEDIR
+cp step*.py $HOMEDIR
 mv *.root $HOMEDIR
 cd $HOMEDIR/CMSSW_10_6_29/src
 cmsenv
@@ -49,11 +87,12 @@ cmsDriver.py step1 \
   --filein file:$HOMEDIR/step1.root \
   --fileout file:step2.root \
   --python_filename step2_DIGI.py \
+  $NO_EXEC_ARG \
   -n $NEVTS
 
 #cmsRun step2_DIGI.py
 
-mv *.py $HOMEDIR
+cp step*.py $HOMEDIR
 mv *.root $HOMEDIR
 cd $HOMEDIR/CMSSW_9_4_14_UL_patch1/src
 cmsenv
@@ -78,11 +117,12 @@ cmsDriver.py step2 \
   --filein file:$HOMEDIR/step2.root \
   --fileout file:step3.root \
   --python_filename step3_HLT.py \
+  $NO_EXEC_ARG \
   -n $NEVTS
 
 #cmsRun step3_HLT.py
 
-mv *.py $HOMEDIR
+cp step*.py $HOMEDIR
 mv *.root $HOMEDIR
 cd $HOMEDIR/CMSSW_10_6_29/src
 cmsenv
@@ -102,11 +142,12 @@ cmsDriver.py step3 \
   --filein file:$HOMEDIR/step3.root \
   --fileout file:step4_AOD.root \
   --python_filename step4_RECO.py \
+  $NO_EXEC_ARG \
   -n $NEVTS
 
 #cmsRun step4_RECO.py
 
-mv *.py $HOMEDIR
+cp step*.py $HOMEDIR
 mv *.root $HOMEDIR
 
 echo "Running step 5: MINIAOD"
@@ -124,11 +165,12 @@ cmsDriver.py step4_AOD \
   --filein file:$HOMEDIR/step4_AOD.root \
   --fileout file:miniAOD.root \
   --python_filename step5_MINIAOD.py \
+  $NO_EXEC_ARG \
   -n $NEVTS
 
 #cmsRun step5_MINIAOD.py
 
-mv *.py $HOMEDIR
+cp step*.py $HOMEDIR
 mv *.root $HOMEDIR
 cd $HOMEDIR
 
