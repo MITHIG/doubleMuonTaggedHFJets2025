@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
                 
                 //cout << "weight: " << weight << endl;
             }
-            if(isData && DataTrigger == 60){
+            if(isData && DataTrigger == 60){ 
                 weight *= 6.338; // so that we can easily hadd the two trigger batches
             }
             if(isData && DataTrigger == 40){ /// BLOCK TO FACILITATE LOWEG SAMPLE

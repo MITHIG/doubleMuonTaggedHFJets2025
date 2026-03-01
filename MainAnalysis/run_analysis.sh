@@ -58,6 +58,7 @@ wait_for_slot
         --Output "data_distros_highEG.root" \
         --IsData true \
         --chargeSelection "$chargesel" \
+        --DataTrigger 80 \
         --ptBins "$pTbins" \
         --muPt "$muPt" \
         --weightMC false \
@@ -73,6 +74,7 @@ wait_for_slot
         --Output "data_distros_lowEG.root" \
         --IsData true \
         --chargeSelection "$chargesel" \
+        --DataTrigger 60 \
         --ptBins "$pTbins" \
         --muPt "$muPt" \
         --weightMC false \
@@ -85,11 +87,11 @@ wait
 hadd -f data_distros.root data_distros_highEG.root data_distros_lowEG.root
 rm -f data_distros_highEG.root data_distros_lowEG.root
 
-#Yield Extraction: data to MC
+#Yield extraction: MC to MC (closure test)
 ./ExecuteYield \
-    --Input "data_distros.root" \
+    --Input "mcdistros.root" \
     --Templates "mcdistros.root" \
-    --Output "yields.root" \
+    --Output "yields_mc.root" \
     --ptBins $pTbins \
     --variables muDR,mumuZ \
     --kde 1.3,1.1 \
@@ -98,11 +100,12 @@ rm -f data_distros_highEG.root data_distros_lowEG.root
     --chargeSelection $chargesel \
     --makeplots true \
 
-#Yield extraction: MC to MC (closure test)
+
+#Yield Extraction: MC to data
 ./ExecuteYield \
-    --Input "mcdistros.root" \
+    --Input "data_distros.root" \
     --Templates "mcdistros.root" \
-    --Output "yields_mc.root" \
+    --Output "yields.root" \
     --ptBins $pTbins \
     --variables muDR,mumuZ \
     --kde 1.3,1.1 \
